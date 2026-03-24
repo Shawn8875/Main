@@ -1,0 +1,114 @@
+
+import os
+
+# Create all necessary directories first
+backend_dirs = [
+    'digimark101/backend/src/routes',
+    'digimark101/backend/src/services',
+    'digimark101/backend/src/middleware',
+    'digimark101/backend/src/utils',
+    'digimark101/backend/prisma'
+]
+
+frontend_dirs = [
+    'digimark101/frontend/src/app/login',
+    'digimark101/frontend/src/app/signup',
+    'digimark101/frontend/src/app/founder',
+    'digimark101/frontend/src/app/niches',
+    'digimark101/frontend/src/app/emails',
+    'digimark101/frontend/src/app/communities',
+    'digimark101/frontend/src/components',
+    'digimark101/frontend/src/lib'
+]
+
+for dir_path in backend_dirs + frontend_dirs:
+    os.makedirs(dir_path, exist_ok=True)
+
+print("✅ All directories created")
+
+# Now create Prisma schema
+prisma_schema = """// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         String   @default("member") // "founder" | "member"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  niches           Niche[]
+  emailSequences   EmailSequence[]
+  communitiesOwned Community[]       @relation("CommunityOwner")
+  memberships      CommunityMember[]
+}
+
+model Niche {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inputData Json
+  result    Json
+  createdAt DateTime @default(now())
+
+  emailSequences EmailSequence[]
+
+  @@index([userId])
+}
+
+model EmailSequence {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nicheId   String?
+  niche     Niche?   @relation(fields: [nicheId], references: [id], onDelete: SetNull)
+  config    Json
+  emails    Json
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([nicheId])
+}
+
+model Community {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Float    @default(0)
+  createdById String
+  createdBy   User     @relation("CommunityOwner", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  members CommunityMember[]
+
+  @@index([createdById])
+}
+
+model CommunityMember {
+  id          String   @id @default(uuid())
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String    @default("member")
+  joinedAt    DateTime  @default(now())
+
+  @@unique([communityId, userId])
+  @@index([communityId])
+  @@index([userId])
+}
+"""
+
+with open('digimark101/backend/prisma/schema.prisma', 'w') as f:
+    f.write(prisma_schema)
+
+print("✅ Created: backend/prisma/schema.prisma")

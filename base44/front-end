@@ -1,0 +1,118 @@
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
+import { Users, Shield, Activity, UserPlus } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
+import PageHeader from '@/components/shared/PageHeader';
+import StatCard from '@/components/shared/StatCard';
+import { cn } from '@/lib/utils';
+
+const statusColors = {
+  onboarding: 'bg-accent/10 text-accent',
+  active: 'bg-green-500/10 text-green-400',
+  paused: 'bg-amber-500/10 text-amber-400',
+  cancelled: 'bg-destructive/10 text-destructive',
+};
+
+const seatLabels = {
+  solo_diy: 'Solo DIY',
+  solo_dfy: 'Solo DFY',
+  team_diy: 'Team DIY',
+  team_dfy: 'Team DFY',
+};
+
+export default function Admin() {
+  const { data: clients = [] } = useQuery({
+    queryKey: ['clients'],
+    queryFn: () => base44.entities.ClientProfile.list('-created_date', 100),
+  });
+
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => base44.entities.User.list(),
+  });
+
+  const activeClients = clients.filter(c => c.status === 'active').length;
+  const onboarding = clients.filter(c => c.status === 'onboarding').length;
+
+  return (
+    <div>
+      <PageHeader
+        title="Admin Panel"
+        subtitle="Manage clients, team, and platform operations"
+        icon={Shield}
+      />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard title="Total Clients" value={clients.length} icon={Users} />
+        <StatCard title="Active" value={activeClients} icon={Activity} />
+        <StatCard title="Onboarding" value={onboarding} icon={UserPlus} />
+        <StatCard title="Team Members" value={users.length} icon={Shield} />
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Clients list */}
+        <div className="lg:col-span-2">
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="font-heading text-base">Client Directory</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {clients.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">No clients yet. Start onboarding with Ava Skye!</p>
+              ) : (
+                <div className="space-y-2">
+                  {clients.map((client) => (
+                    <div key={client.id} className="flex items-center gap-3 p-3 rounded-lg bg-secondary border border-border">
+                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="text-sm font-bold text-primary">{(client.full_name || '?')[0].toUpperCase()}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{client.full_name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{client.business_name || client.email}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge className="text-xs" variant="outline">{seatLabels[client.seat_type] || 'Solo DIY'}</Badge>
+                        <Badge className={cn("text-xs", statusColors[client.status])}>{client.status}</Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Team */}
+        <div>
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="font-heading text-base">Team Members</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {users.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">No team members yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {users.map((user) => (
+                    <div key={user.id} className="flex items-center gap-3 p-3 rounded-lg bg-secondary border border-border">
+                      <div className="h-8 w-8 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
+                        <span className="text-xs font-bold text-accent">{(user.full_name || '?')[0].toUpperCase()}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{user.full_name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                      </div>
+                      <Badge variant="outline" className="text-xs capitalize">{user.role || 'user'}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
